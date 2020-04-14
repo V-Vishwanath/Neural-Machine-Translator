@@ -14,7 +14,7 @@ from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.losses import SparseCategoricalCrossentropy as SCC
 
 class Translator:
-    class _Encoder(tf.keras.Model):
+    class _Encoder(Model):
         def __init__(self, size, embedding_dim, units, batch_size):
             super(Translator._Encoder, self).__init__()
             self.batch_size = batch_size
@@ -30,7 +30,7 @@ class Translator:
             return tf.zeros((self.batch_size, self.units))
 
 
-    class _Attention(tf.keras.layers.Layer):
+    class _Attention(Layer):
         def __init__(self, units):
             super(Translator._Attention, self).__init__()
             self.X = Dense(units)
@@ -45,14 +45,14 @@ class Translator:
             return context_vector, attention_weights
 
 
-    class _Decoder(tf.keras.Model):
+    class _Decoder(Model):
         def __init__(self, size, embedding_dim, units, batch_size):
             super(Translator._Decoder, self).__init__()
             self.batch_size = batch_size
             self.units = units
-            self.embedding = tf.keras.layers.Embedding(size, embedding_dim)
-            self.gru = tf.keras.layers.GRU(self.units, return_sequences=True, return_state=True, recurrent_initializer='glorot_uniform')
-            self.fc = tf.keras.layers.Dense(size)
+            self.embedding = Embedding(size, embedding_dim)
+            self.gru = GRU(self.units, return_sequences=True, return_state=True, recurrent_initializer='glorot_uniform')
+            self.fc = Dense(size)
             self.attention = Translator._Attention(self.units)
 
         def call(self, x, hidden, enc_output):
@@ -79,6 +79,8 @@ class Translator:
         self.steps_per_epoch = self.BUFFER_SIZE // self.BATCH_SIZE
         self.embedding_dim = 256
         self.units = 1024
+        
+        self.n_epochs = 12
 
 
     def _preprocess(self, sentence):
@@ -115,9 +117,8 @@ class Translator:
         if not os.path.exists('checkpoints'):
             dataset = tf.data.Dataset.from_tensor_slices((self.train_inp, self.train_out)).shuffle(self.BUFFER_SIZE)
             dataset = dataset.batch(self.BATCH_SIZE, drop_remainder=True)
-            n_epochs = 12
 
-            for i in range(n_epochs):
+            for i in range(self.n_epochs):
                 start = time.time()
                 print(f'EPOCH {i+1}')
 
@@ -192,12 +193,6 @@ class Translator:
 
 data = pd.read_csv('data.csv')
 
-data = data[data['source'] == 'ted']
-data = data[~pd.isnull(data['english_sentence'])]
-data.drop_duplicates(inplace=True)
-
-data = data.sample(n=35000, random_state=42)
-
 inp_lang = [i for i in data['english_sentence']]
 out_lang = [i for i in data['hindi_sentence']]
 
@@ -205,6 +200,6 @@ translator = Translator(inp_lang, out_lang)
 
 translator.train()
 
-hindi_sentence = translator.translate('What are you doing?')
-print(hindi_sentence)
-
+while True:
+	hindi_sentence = translator.translate(input('Enter english sentence : '))
+	print(f'Hindi translation : {hindi_sentence}')
